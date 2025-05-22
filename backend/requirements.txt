@@ -1,1 +1,6 @@
-
+fastapi
+uvicorn
+selenium
+cryptography
+openai
+rstr
