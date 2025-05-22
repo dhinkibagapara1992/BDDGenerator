@@ -1,1 +1,24 @@
-
+[
+  {
+    "element name": "login_input",
+    "actual value": "DhinkiBagaPara@123",
+    "expected value": "DhinkiBagaPara@123",
+    "choosen random": false,
+    "regular expression": "",
+    "durationOfWait": 0,
+    "ExpectedCondition": "",
+    "Pooling Every": 0.5,
+    "Wait Type": "None"
+  },
+  {
+    "element name": "submit_button",
+    "actual value": "",
+    "expected value": "",
+    "choosen random": false,
+    "regular expression": "",
+    "durationOfWait": 0,
+    "ExpectedCondition": "",
+    "Pooling Every": 0.5,
+    "Wait Type": "None"
+  }
+]
