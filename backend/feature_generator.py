@@ -1,8 +1,6 @@
 from encryption import encrypt
-import re
 
 def escape_gherkin(val):
-    # Escape | for Gherkin tables
     return val.replace('|', '\\|')
 
 def generate_feature_file(data_json, object_repo_json, feature_name, scenario_outline):
@@ -36,7 +34,6 @@ def generate_feature_file(data_json, object_repo_json, feature_name, scenario_ou
     return gherkin
 
 def generate_step_definitions(data_json, object_repo_json):
-    # Java step definitions template
     return '''package step_definitions;
 
 import io.cucumber.java.en.When;
@@ -57,7 +54,6 @@ public class StepDefinitions {
 '''
 
 def generate_java_helpers():
-    # ObjectRepositoryUtil, DataUtil, JsExecutorUtil stubs
     return {
         "ObjectRepositoryUtil.java": '''
 package utils;
