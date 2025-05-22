@@ -51,3 +51,14 @@ def stepdefs_generate(payload: dict = Body(...)):
 @app.get("/javahelpers")
 def java_helpers():
     return generate_java_helpers()
+    
+@app.post("/feature/write")
+def feature_write(payload: dict = Body(...)):
+    data_json = payload.get("data_json", [])
+    object_repo_json = payload.get("object_repo_json", [])
+    feature_name = payload.get("feature_name", "Sample Feature")
+    scenario_outline = payload.get("scenario_outline", "")
+    feature_str = generate_feature_file(data_json, object_repo_json, feature_name, scenario_outline)
+    with open(f"../feature_files/{feature_name.lower().replace(' ', '_')}.feature", "w") as f:
+        f.write(feature_str)
+    return {"success": True}
