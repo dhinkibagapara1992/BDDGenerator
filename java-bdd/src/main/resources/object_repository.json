@@ -1,1 +1,21 @@
 
+[
+  {
+    "object name": "login_input",
+    "suggested locators": ["//*[@id='login']", "//*[@name='username']"],
+    "locator": "//*[@id='login']",
+    "window number": 1,
+    "framechain": "",
+    "element type": "textBox",
+    "targetElement": "input"
+  },
+  {
+    "object name": "special_frame_button",
+    "suggested locators": ["//*[@id='special']", "//button[2]"],
+    "locator": "//*[@id='special']",
+    "window number": 2,
+    "framechain": "frame1||frame2",
+    "element type": "button",
+    "targetElement": "button"
+  }
+]
