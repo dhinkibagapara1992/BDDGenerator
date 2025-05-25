@@ -3,12 +3,11 @@ import json
 import os
 from ai_executor import AIUIExecutor
 from datetime import datetime
-import base64
 
 st.set_page_config(page_title="AI UI Real-Time Operation Creator", layout="wide")
 st.title("AI UI Operation Creator (Real-time)")
 
-# --- Load AI config if exists ---
+# Load AI config if exists
 ai_config = {"model": "", "api_key": "", "api_base": ""}
 config_path = "ai_config_sonnet.json"
 if os.path.exists(config_path):
@@ -99,20 +98,12 @@ def add_to_test_data(step):
 
 def clean_dict_for_json(obj):
     if isinstance(obj, dict):
-        return {k: clean_dict_for_json(v) for k, v in obj.items() if is_json_serializable(v)}
+        return {k: clean_dict_for_json(v) for k, v in obj.items()}
     elif isinstance(obj, list):
-        return [clean_dict_for_json(x) for x in obj if is_json_serializable(x)]
+        return [clean_dict_for_json(x) for x in obj]
     return obj
 
-def is_json_serializable(v):
-    try:
-        json.dumps(v)
-        return True
-    except:
-        return False
-
 def generate_extent_report(logs, report_path):
-    # Basic HTML report embedding logs and screenshots as base64 images
     html = """
     <html><head><title>Extent Report</title>
     <style>
@@ -149,9 +140,8 @@ if st.button("Execute UI Operation"):
     else:
         st.success("AI plan ready! Executing in your browser...")
         logs = []
-        # Run steps, capturing logs + screenshots on failure inside AIUIExecutor
         result = ai_executor.run_steps(steps, log_callback=lambda m: logs.append(m))
-        
+
         st.write("### Step Validation")
         for i, step in enumerate(steps):
             nl_step = natural_language_for_step(step)
@@ -170,11 +160,9 @@ if st.button("Execute UI Operation"):
         st.write("**Execution Log:**")
         st.text("\n".join([log.get('message','') for log in logs]))
 
-        # Generate & show extent report
         generate_extent_report(logs, report_path)
         st.markdown(f"**Extent Report:** [{report_path}]({report_path})")
 
-        # Download buttons for artifacts
         st.write("### Download Artifacts")
         col1, col2, col3 = st.columns(3)
         with col1:
