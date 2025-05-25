@@ -2,16 +2,14 @@ import streamlit as st
 import json
 import os
 from ai_executor import AIUIExecutor
+from datetime import datetime
+import base64
 
 st.set_page_config(page_title="AI UI Real-Time Operation Creator", layout="wide")
 st.title("AI UI Operation Creator (Real-time)")
 
 # --- Load AI config if exists ---
-ai_config = {
-    "model": "",
-    "api_key": "",
-    "api_base": ""
-}
+ai_config = {"model": "", "api_key": "", "api_base": ""}
 config_path = "ai_config_sonnet.json"
 if os.path.exists(config_path):
     with open(config_path, "r") as f:
@@ -29,45 +27,21 @@ with st.sidebar:
     screenshot_dir = st.text_input("Screenshot Directory", "screenshots")
     report_path = st.text_input("Extent Report Path", "extent_report.html")
     st.markdown("""
-        <small>
-        Your API key and base URL are used only in your browser session and never sent anywhere else.
-        </small>
-        """, unsafe_allow_html=True)
-
-st.markdown("""
-### 📝 **Prompt Syntax Suggestions for Best Results**
-- Prefer **step-by-step JSON** or clear, sequential natural language.
-- Example JSON:
-```json
-[
-  {"eventType": "navigate", "locatorType": "url", "locator": "https://example.com"},
-  {"eventType": "input", "locatorType": "label", "locator": "Username", "value": "myuser"},
-  {"eventType": "input", "locatorType": "label", "locator": "Password", "value": "secret"},
-  {"eventType": "click", "locatorType": "button_text", "locator": "Sign In"},
-  {"eventType": "wait_js", "value": "return typeof window.myAppReady !== 'undefined' && window.myAppReady===true;"}
-]
-```
-- Or natural language:
-    - Go to https://example.com
-    - Enter "myuser" in the Username field
-    - Enter "secret" in the Password field
-    - Click the "Sign In" button
-    - Wait until the dashboard is fully loaded
-
-**Tips:**
-- Use labels and visible text for fields and buttons.
-- Mention if a step requires waiting for a UI or JS state.
-- Specify frame or window if needed.
-""")
+        <small>Your API key and base URL are used only in your browser session and never sent anywhere else.</small>
+    """, unsafe_allow_html=True)
 
 if not api_key or not model or not api_base:
-    st.warning("Please configure your AI API Key, Model, and Base URL in the sidebar, or set them in ai_config_sonnet.json.")
+    st.warning("Please configure your AI API Key, Model, and Base URL in the sidebar or ai_config_sonnet.json.")
     st.stop()
 
 ai_executor = AIUIExecutor(model, api_key, api_base, screenshot_dir=screenshot_dir, report_path=report_path)
 
-prompt = st.text_area("Describe your UI operation(s) to run on your browser:", "Go to https://example.com, enter \"myuser\" in the Username field, and click the Sign In button.")
+prompt = st.text_area(
+    "Describe your UI operation(s) to run on your browser:",
+    "Go to https://example.com, enter \"myuser\" in the Username field, and click the Sign In button."
+)
 
+# Session state for test data
 if 'object_repository' not in st.session_state:
     st.session_state['object_repository'] = {}
 if 'actions' not in st.session_state:
@@ -86,12 +60,21 @@ def natural_language_for_step(step):
         return f'Enter "{val}" in the {lt}: {loc} field'
     if et == "click":
         return f'Click on the {lt}: {loc} element'
+    if et == "hover":
+        return f'Hover over the {lt}: {loc} element'
+    if et == "drag_and_drop":
+        target = step.get("targetLocator", "unknown")
+        return f'Drag {lt}: {loc} and drop to {target}'
     if et == "press_enter":
         return f'Press ENTER on the {lt}: {loc} element'
     if et == "wait":
         return f'Wait for {val} seconds'
     if et == "wait_js":
         return f'Wait for JS condition: {val} to become true'
+    if et == "switch_frame":
+        return f'Switch to frame {loc}'
+    if et == "switch_window":
+        return f'Switch to window {loc}'
     return f"{et} on {lt}: {loc} with {val}"
 
 def add_to_object_repository(step):
@@ -106,7 +89,7 @@ def add_to_object_repository(step):
 def add_to_actions(step, nl):
     st.session_state['actions'].append({
         "natural_language": nl,
-        "step": {k: v for k, v in step.items() if k in ["eventType", "locatorType", "locator", "value", "framePath", "window"]}
+        "step": {k: v for k, v in step.items() if k in ["eventType", "locatorType", "locator", "value", "framePath", "window", "targetLocator"]}
     })
 
 def add_to_test_data(step):
@@ -128,32 +111,70 @@ def is_json_serializable(v):
     except:
         return False
 
+def generate_extent_report(logs, report_path):
+    # Basic HTML report embedding logs and screenshots as base64 images
+    html = """
+    <html><head><title>Extent Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .log { margin-bottom: 10px; padding: 10px; border-radius: 5px; }
+        .PASS { background-color: #d4edda; }
+        .FAIL { background-color: #f8d7da; }
+        .INFO { background-color: #d1ecf1; }
+        .log img { max-width: 400px; display: block; margin-top: 5px; border: 2px solid orange; }
+        .timestamp { font-size: 0.8em; color: #555; }
+    </style></head><body>
+    <h1>Extent Report</h1>
+    """
+    for log in logs:
+        status = log.get("status", "INFO")
+        message = log.get("message", "")
+        ts = log.get("timestamp", "")
+        screenshot = log.get("screenshot_base64", None)
+        html += f'<div class="log {status}">'
+        html += f'<div><b>Status:</b> {status} <span class="timestamp">{ts}</span></div>'
+        html += f'<div>{message}</div>'
+        if screenshot:
+            html += f'<img src="data:image/png;base64,{screenshot}" alt="Screenshot"/>'
+        html += '</div>'
+    html += "</body></html>"
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
 if st.button("Execute UI Operation"):
     with st.spinner("Asking AI to plan steps..."):
         steps = ai_executor.ai_parse_steps(prompt)
     if not steps:
-        st.error("AI could not generate a plan. Try rephrasing.")
+        st.error("AI could not generate a plan from your request. Try rephrasing.")
     else:
-        st.success("Plan generated! Executing...")
+        st.success("AI plan ready! Executing in your browser...")
         logs = []
+        # Run steps, capturing logs + screenshots on failure inside AIUIExecutor
         result = ai_executor.run_steps(steps, log_callback=lambda m: logs.append(m))
-        st.write("### Step-by-Step Review")
+        
+        st.write("### Step Validation")
         for i, step in enumerate(steps):
-            nl = natural_language_for_step(step)
-            st.write(f"**Step {i+1}:** {nl}")
-            passed = any("PASS" in log.get('status', '') for log in ai_executor.extent_logs if f"Step {i+1}:" in log.get('message', ''))
-            if passed:
-                if st.checkbox(f"Mark Step {i+1} as Validated?", key=f"v_{i}"):
+            nl_step = natural_language_for_step(step)
+            step_logs = [log for log in logs if f"Step {i+1}:" in log.get('message', '')]
+            step_pass = any(log.get('status') == 'PASS' for log in step_logs)
+            st.write(f"**Step {i+1}:** {nl_step}")
+            if step_pass:
+                if st.checkbox(f"Mark Step {i+1} as Correct (Validated)?", key=f"correct_{i}"):
                     add_to_object_repository(step)
-                    add_to_actions(step, nl)
+                    add_to_actions(step, nl_step)
                     add_to_test_data(step)
             else:
-                st.warning(f"Step {i+1} failed or could not be validated.")
+                st.warning(f"Step {i+1} did not PASS in automation logs.")
 
-        st.write("### Execution Logs")
-        st.text("\n".join(logs))
+        st.write("----")
+        st.write("**Execution Log:**")
+        st.text("\n".join([log.get('message','') for log in logs]))
+
+        # Generate & show extent report
+        generate_extent_report(logs, report_path)
         st.markdown(f"**Extent Report:** [{report_path}]({report_path})")
 
+        # Download buttons for artifacts
         st.write("### Download Artifacts")
         col1, col2, col3 = st.columns(3)
         with col1:
