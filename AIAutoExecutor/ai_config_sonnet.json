@@ -1,0 +1,6 @@
+{
+  "api_key": "phwLsrkBfLHxxS_9aA0cD9GvnNNCxLRY7QmKkFu8Dq0",
+  "model": "Bedrock-Claude-3.7-Sonnet",
+  "api_base": "https://aihub-dev-bedrock-access-gateway-api.aws.baxter.com/v1",
+  "provider": "openai"
+}
